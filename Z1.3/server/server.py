@@ -12,7 +12,7 @@ def main():
             if not datagram:
                 print("Error in datagram?")
                 break
-            data = struct.unpack('<qih10p', datagram)
+            data = struct.unpack('<qih10s', datagram)
             print(f"Message from Client: {data}")
             print("Client IP Address:{}".format(address))
 
