@@ -1,4 +1,5 @@
-## Z 1
+## Z 1.1
+
 ### uruchomienie klienta:
 
 $ docker build -t z16_client .
