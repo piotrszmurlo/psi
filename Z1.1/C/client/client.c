@@ -8,9 +8,8 @@
 
 int createSocket() {
     int socketfd = socket(AF_INET, SOCK_DGRAM, 0);
-
     if (socketfd == -1) {
-        perror("Socket opening failure");
+        printf("Socket opening failure");
         exit(EXIT_FAILURE);
     }
     return socketfd;
@@ -18,24 +17,24 @@ int createSocket() {
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        printf("Arguments: [IP address] [port]");
+        printf("Arguments: [Server name] [port]\n");
         exit(-1);
     }
-
-    struct sockaddr_in servaddr;
     struct hostent *hp;
-    memset(&servaddr, 0, sizeof(servaddr));
-
     hp = gethostbyname(argv[1]);
     if (hp == (struct hostent *) 0) {
-        fprintf(stderr, "%s: unknown host\n", argv[1]);
+        printf("%s: unknown host\n", argv[1]);
         exit(2);
     }
+    struct sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(servaddr));
     memcpy((char *) &servaddr.sin_addr, (char *) hp->h_addr,
            hp->h_length);
-    char *data[] = {"datagram one", "datagram two", "datagram three"};
     servaddr.sin_port = htons(atoi(argv[2]));
     servaddr.sin_family = AF_INET;
+
+
+    char *data[] = {"datagram one", "datagram two", "datagram three"};
     int socketfd = createSocket();
     int i;
     for (i = 0; i < 3; ++i) {
@@ -44,7 +43,7 @@ int main(int argc, char *argv[]) {
         printf("message #%d sent\n", i + 1);
     }
 
-    printf("Client quitting");
+    printf("Client quitting\n");
     close(socketfd);
-    return 0;
+    exit(0);
 }
