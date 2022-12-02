@@ -1,4 +1,4 @@
-## Z 1
+## Z 1.1
 ### uruchomienie serwera:
 
 $ docker build -t z16_server .
