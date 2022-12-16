@@ -73,7 +73,6 @@ int main() {
             int declared_length = 0;
             while (moreData()) {
                 int n = recv(connection, buffer, BUFFER_SIZE, 0);
-                printf("N:: %d\n", n);
                 if (n < 0) {
                     printf("recv() error\n");
                 }
@@ -92,8 +91,6 @@ int main() {
                         total_n += 1;
                     }
                 }
-                printf("DECLAREDLEN: %d\n", declared_length - 1);
-                printf("total_n: %d\n", total_n);
                 if (total_n == declared_length - 1) {
                     printf("Received message: %s\n", message_buffer);
                     char *data = "received, thanks";
