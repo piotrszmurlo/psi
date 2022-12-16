@@ -4,17 +4,14 @@ from socket import gethostbyname
 
 def main():
     port = 53290
+    if len(sys.argv) != 2:
+        print("Provide hostname as command line argument")
+        exit(-1)
     try:
         host = gethostbyname(sys.argv[1])
     except socket.gaierror:
         print("Error: Host name can't be resolved")
         exit(-1)
-
-
-    if len(sys.argv) != 2:
-        print("Provide port as command line argument")
-        exit(-1)
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
         # try:
