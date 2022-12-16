@@ -9,6 +9,7 @@
 #include <netdb.h>
 
 #define PORT 53290
+#define BUFFER_SIZE 1024
 
 int createSocket() {
     int socketfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -44,16 +45,23 @@ int main(int argc, char *argv[]) {
         printf("connect() failure\n");
         exit(EXIT_FAILURE);
     }
-    char* data = "abcdefghi";
+    char* data = "abcdefghijk";
     int len = strlen(data);
     int n = send(socketfd, data, len, 0);
     if (n < 0) {
         printf("send() error\n");
         printf("%d\n", h_errno);
+        exit(EXIT_FAILURE);
     }
-    else {
-        printf("Message sent, client_tcp quitting\n");
+    printf("Message sent.\n");
+    char buffer[BUFFER_SIZE] = {0};
+    n = recv(socketfd, buffer, BUFFER_SIZE, 0);
+    if (n < 0) {
+        printf("recv() error\n");
+        printf("%d\n", h_errno);
+        exit(EXIT_FAILURE);
     }
+    printf("Received message from server: %s\n", buffer);
     close(socketfd);
     exit(EXIT_SUCCESS);
 }
