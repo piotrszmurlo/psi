@@ -28,12 +28,11 @@ def main():
                 exit(-1)
             with connection:
                 print(f"Connection from address: {address}")
-                while more_data():
-                    data = connection.recv(buffer_size)
-                    if not data:
-                        break
-                    connection.sendall(b'received, thanks')
-                    print(f"Message from Client: {data}")
+                data = connection.recv(buffer_size)
+                # if not data:
+                #     break
+                connection.sendall(b'received, thanks')
+                print(f"Message from Client: {data}")
 
             connection.close()
 
