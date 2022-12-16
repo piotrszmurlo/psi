@@ -45,9 +45,8 @@ int main(int argc, char *argv[]) {
         printf("connect() failure\n");
         exit(EXIT_FAILURE);
     }
-    char* data = "abcdefghijk";
-    int len = strlen(data);
-    int n = send(socketfd, data, len, 0);
+    char* data = "18\0abcdefghijklmnoprstuw";
+    int n = send(socketfd, data, 21, 0);
     if (n < 0) {
         printf("send() error\n");
         printf("%d\n", h_errno);
