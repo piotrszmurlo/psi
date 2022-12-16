@@ -29,8 +29,11 @@ def main():
             with connection:
                 print(f"Connection from address: {address}")
                 data = connection.recv(buffer_size)
-                connection.sendall(b'received, thanks')
-                print(f"Message from Client: {data}")
+                if not data:
+                    print("data error")
+                else:
+                    connection.sendall(b'received, thanks')
+                    print(f"Message from Client: {data}")
 
             connection.close()
 

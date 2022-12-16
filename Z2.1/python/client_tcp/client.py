@@ -21,7 +21,7 @@ def main():
         if not data:
             print("data error")
         print(f"Message from server: {data}")
-
+    s.close()
 
 if __name__ == '__main__':
     main()

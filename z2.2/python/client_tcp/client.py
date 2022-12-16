@@ -4,6 +4,7 @@ from socket import gethostbyname
 
 def main():
     port = 53290
+    buffer_size = 1024
     if len(sys.argv) != 2:
         print("Provide hostname as command line argument")
         exit(-1)
@@ -14,11 +15,12 @@ def main():
         exit(-1)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
-        # try:
-        print(s.send(b"abcdefghijkabcdefghijk"*3000))
-        # except Exception:
-        #     print("Error: send failed")
-        #     exit(-1)
+        s.sendall(b"abcdefghijk")
+        print("data sent")
+        data = s.recv(buffer_size)
+        if not data:
+            print("data error")
+        print(f"Message from server: {data}")
 
 
 if __name__ == '__main__':

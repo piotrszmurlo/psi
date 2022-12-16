@@ -1,5 +1,4 @@
 import socket
-import time
 
 
 def work():
@@ -12,11 +11,12 @@ def more_data():
 
 def main():
     port = 53290
-    buffer_size = 8
+    buffer_size = 512
+    backlog = 5
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('', port))
         print(f"Server listening on port {port}")
-        s.listen()
+        s.listen(backlog)
         while work():
             try:
                 connection, address = s.accept()
@@ -32,7 +32,9 @@ def main():
                     data = connection.recv(buffer_size)
                     if not data:
                         break
+                    connection.sendall(b'received, thanks')
                     print(f"Message from Client: {data}")
+
             connection.close()
 
 
