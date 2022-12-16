@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdbool.h>
-#include <unistd.h>
+#include <time.h>
 
 #define BUFFER_SIZE 8
 #define PORT 53290
@@ -61,52 +61,50 @@ int main() {
         printf("listen() failure\n");
         exit(EXIT_FAILURE);
     }
+    connection = accept(sockfd, (struct sockaddr *) 0, (int *) 0);
+        if (connection < 0) {
+            printf("accept() failure\n");
+            exit(-1);
+        }
     do {
         char buffer[BUFFER_SIZE] = {0};
         char message_buffer[1024] = {0};
-        connection = accept(sockfd, (struct sockaddr *) 0, (int *) 0);
-        if (connection < 0) {
-            printf("accept() failure\n");
-        } else {
-            int message_index = 0;
-            int total_n = 0;
-            int init = 1;
-            int declared_length = 0;
-            while (moreData()) {
-                int n = recv(connection, buffer, BUFFER_SIZE, 0);
-                sleep(1);
-                printf("N:: %d\n", n);
-                if (n < 0) {
-                    printf("recv() error\n");
-                }
-                int i;
-                char len_buffer[BUFFER_SIZE] = {0};
-                for (i = 0; i < n; i++) {
-                    if (init == 1) {
-                        if (buffer[i] == '\0') {
-                            memcpy(len_buffer, buffer, i);
-                            sscanf(len_buffer, "%d", &declared_length);
-                            total_n -= 1;
-                            init = 0;
-                        }
-                    } else {
-                        message_buffer[message_index++] = buffer[i];
-                        total_n += 1;
-                    }
-                }
-                printf("DECLAREDLEN: %d\n", declared_length - 1);
-                printf("total_n: %d\n", total_n);
-                if (total_n == declared_length - 1) {
-                    printf("Received message: %s\n", message_buffer);
-                    char *data = "received, thanks";
 
-                    n = send(connection, data, strlen(data), 0);
-                    if (n < 0) {
-                        printf("send() error\n");
-                        exit(EXIT_FAILURE);
+        int message_index = 0;
+        int total_n = 0;
+        int init = 1;
+        int declared_length = 0;
+        while (moreData()) {
+            int n = recv(connection, buffer, BUFFER_SIZE, 0);
+            sleep(0.5);
+            if (n < 0) {
+                printf("recv() error\n");
+            }
+            int i;
+            char len_buffer[BUFFER_SIZE] = {0};
+            for (i = 0; i < n; i++) {
+                if (init == 1) {
+                    if (buffer[i] == '\0') {
+                        memcpy(len_buffer, buffer, i);
+                        sscanf(len_buffer, "%d", &declared_length);
+                        total_n -= 1;
+                        init = 0;
                     }
-                    break;
+                } else {
+                    message_buffer[message_index++] = buffer[i];
+                    total_n += 1;
                 }
+            }
+            if (total_n == declared_length - 1) {
+                printf("Received message: %s\n", message_buffer);
+                char *data = "received, thanks";
+
+                n = send(connection, data, strlen(data), 0);
+                if (n < 0) {
+                    printf("send() error\n");
+                    exit(EXIT_FAILURE);
+                }
+                break;
             }
         }
     } while (moreWork());

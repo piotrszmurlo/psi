@@ -11,7 +11,7 @@
 
 #define PORT 53290
 #define BUFFER_SIZE 1024
-#define DATA_LOOP 100
+#define DATA_LOOP 1000
 
 int createSocket() {
     int socketfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -47,7 +47,16 @@ int main(int argc, char *argv[]) {
         printf("connect() failure\n");
         exit(EXIT_FAILURE);
     }
-    char* data = "18\0abcdefghijklmnoprstuw";
+    char* data = "abcdefghijklmno\0";
+    int dataLen = strlen(data);
+    char numberStr[10] = {0};
+    sprintf(numberStr, "%d", dataLen);
+    int prefixSize = strlen(numberStr) + 1;
+    char* dataWithLen = malloc(dataLen + strlen(numberStr) + 1);
+    strcpy(dataWithLen, numberStr);
+    dataWithLen[strlen(numberStr)] = '\0';
+    memcpy(dataWithLen+prefixSize, data, dataLen);
+
     int i;
     clock_t start, end;
     double time_resullts[DATA_LOOP];
@@ -55,7 +64,7 @@ int main(int argc, char *argv[]) {
 
     for(i=0; i<DATA_LOOP; i++) {
         start = clock();
-        int n = send(socketfd, data, 21, 0);
+        int n = send(socketfd, dataWithLen, dataLen + prefixSize, 0);
         end = clock();
         cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
         if (n < 0) {
@@ -74,6 +83,8 @@ int main(int argc, char *argv[]) {
         }
         printf("Received message from server: %s\n", buffer);
     }
+    for(i = 0; i < DATA_LOOP; i++)
+      printf("%f ", time_resullts[i]);
 
     close(socketfd);
     exit(EXIT_SUCCESS);
