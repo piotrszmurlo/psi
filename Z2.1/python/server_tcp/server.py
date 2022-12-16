@@ -14,7 +14,7 @@ def main():
     buffer_size = 512
     backlog = 5
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', port))
+        s.bind(('172.18.0.2', port))
         print(f"Server listening on port {port}")
         s.listen(backlog)
         while work():

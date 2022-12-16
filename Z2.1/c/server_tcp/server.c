@@ -70,8 +70,14 @@ int main() {
             if (n < 0) {
                 printf("send() error\n");
             }
-            printf("Length of the message: %d\n", n);
-            printf("Received message: %s\n", buffer);
+            printf("Received message from client: %s\n", buffer);
+            char* data = "received, thanks";
+
+            n = send(connection, data, strlen(data), 0);
+            if (n < 0) {
+                printf("send() error\n");
+                exit(EXIT_FAILURE);
+            }
         }
     } while (moreWork());
 }

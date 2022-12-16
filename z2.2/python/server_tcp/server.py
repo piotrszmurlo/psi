@@ -11,7 +11,7 @@ def more_data():
 
 def main():
     port = 53290
-    buffer_size = 512
+    buffer_size = 8
     backlog = 5
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('', port))
@@ -28,12 +28,25 @@ def main():
                 exit(-1)
             with connection:
                 print(f"Connection from address: {address}")
+                data = ''
+                initial = True
+                split_message = []
                 while more_data():
-                    data = connection.recv(buffer_size)
-                    if not data:
+                    temp_data = connection.recv(buffer_size)
+                    if not temp_data:
                         break
-                    connection.sendall(b'received, thanks')
-                    print(f"Message from Client: {data}")
+                    # only the first data portion contains message length
+                    if initial:
+                        split_message = temp_data.decode().split('\0')
+                        if len(split_message) == 2:
+                            data += split_message[1]
+                        initial = False
+                    else:
+                        data += temp_data.decode()
+                    if len(data) >= int(split_message[0]):
+                        connection.sendall(b'received, thanks')
+                        break
+                print(f"Message from Client: {data}")
 
             connection.close()
 
