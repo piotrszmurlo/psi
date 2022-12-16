@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
         printf("Arguments: [Server name]\n");
         exit(EXIT_FAILURE);
     }
+
     struct hostent *hp;
     hp = gethostbyname(argv[1]);
     if (hp == (struct hostent *) 0) {
@@ -44,11 +45,13 @@ int main(int argc, char *argv[]) {
         printf("connect() failure\n");
         exit(EXIT_FAILURE);
     }
+
+
     char* data = "abcdefghi";
     int len = strlen(data);
-    int n = send(socketfd, data, len, 0);
-    if (n < 0) {
-        printf("send() error\n");
+    int write_stat = write(socketfd, data, len);
+    if (write_stat < 0) {
+        printf("write() error\n");
         printf("%d\n", h_errno);
     }
     else {
