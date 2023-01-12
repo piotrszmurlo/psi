@@ -1,0 +1,5 @@
+FROM python:3
+ADD node.py /
+ADD main.py /
+ADD resources /resources
+ENTRYPOINT ["python", "-u", "./main.py"]

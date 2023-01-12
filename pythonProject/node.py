@@ -1,4 +1,5 @@
-import logging
+import random
+from pprint import pprint
 import os
 import socket
 import struct
@@ -22,39 +23,37 @@ class DatagramType:
 class Node:
     def __init__(self):
         os.makedirs(RESOURCES_PATH, exist_ok=True)
-        self.available_resources = []
+        self.available_resources = {}
         self.isStarted = False
 
     def start(self):
-        broadcast_thread = threading.Thread(target=self.broadcast_resources, daemon=True)
+        broadcast_thread = threading.Thread(target=self.broadcast_resources)
         self.isStarted = True
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server_socket.bind(('', PORT))
         broadcast_thread.start()
-        while True:
+        while self.isStarted:
             datagram, sender = server_socket.recvfrom(BUFFER_SIZE)
-            print(sender)
-            print(socket.getsockname())
-            hostname = socket.getfqdn()
             if datagram[0] == DatagramType.FILE_DATA:
-                print(self.unpack_datagram(datagram))
+                pprint(self.unpack_datagram(datagram))
             elif datagram[0] == DatagramType.BROADCAST_RESOURCES:
-                self.on_broadcast_resources_received(datagram)
+                self.on_broadcast_resources_received(datagram, sender[0])
             elif datagram[0] == DatagramType.REQUEST_FILE:
                 self.unpack_resources_datagram(datagram)
 
-    def on_broadcast_resources_received(self, datagram):
+    def on_broadcast_resources_received(self, datagram, owner):
         _, _, files = self.unpack_resources_datagram(datagram)
         for file in files:
             if file not in self.available_resources:
-                self.available_resources.append(file)
-        print(self.available_resources)
+                self.available_resources[file] = [owner]
+            elif self.available_resources[file] and owner not in self.available_resources[file]:
+                self.available_resources[file].append(owner)
+        pprint(self.available_resources)
 
     def broadcast_resources(self):
         broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         while self.isStarted:
-            print("sent bradcast")
             resources_datagram = self.get_resources_datagram()
             broadcast_socket.sendto(resources_datagram, ("255.255.255.255", PORT))
             time.sleep(5)

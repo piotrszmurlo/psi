@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  node1:
+    container_name: node1
+    build:
+      dockerfile: dockerfile
+
+  node2:
+    container_name: node2
+    build:
+      dockerfile: dockerfile
