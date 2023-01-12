@@ -4,8 +4,18 @@ services:
     container_name: node1
     build:
       dockerfile: dockerfile
+      args:
+        - RESOURCES=resources1
 
   node2:
     container_name: node2
     build:
       dockerfile: dockerfile
+      args:
+        - RESOURCES=resources2
+  node3:
+    container_name: node3
+    build:
+      dockerfile: dockerfile
+      args:
+        - RESOURCES=resources3

@@ -1,4 +1,3 @@
-import random
 from pprint import pprint
 import os
 import socket
@@ -7,12 +6,12 @@ import time
 from typing import Optional
 import threading
 
-RESOURCES_PATH = 'resources'
+RESOURCES_PATH = 'resources1'
 HEADER_SIZE = 5  # sizeof(type: unsigned char + length: unsigned int)
 BUFFER_SIZE = 1024
 STRUCT_FORMAT_HEADER = "!BI"
 PORT = 53290
-
+BROADCAST_ADDRESS = "255.255.255.255"
 
 class DatagramType:
     BROADCAST_RESOURCES = 0
@@ -34,12 +33,20 @@ class Node:
         broadcast_thread.start()
         while self.isStarted:
             datagram, sender = server_socket.recvfrom(BUFFER_SIZE)
-            if datagram[0] == DatagramType.FILE_DATA:
+            sender_address = sender[0]
+            datagram_type = datagram[0]
+            if datagram_type == DatagramType.FILE_DATA:
                 pprint(self.unpack_datagram(datagram))
-            elif datagram[0] == DatagramType.BROADCAST_RESOURCES:
-                self.on_broadcast_resources_received(datagram, sender[0])
-            elif datagram[0] == DatagramType.REQUEST_FILE:
-                self.unpack_resources_datagram(datagram)
+            elif datagram_type == DatagramType.BROADCAST_RESOURCES:
+                self.on_broadcast_resources_received(datagram, sender_address)
+            elif datagram_type == DatagramType.REQUEST_FILE:
+                self.on_request_file_received(datagram, sender_address)
+
+    def on_request_file_received(self, datagram: bytes, sender_address: str):
+        _, _, filename = self.unpack_datagram(datagram)
+        file_datagram = self.get_file_datagram(filename.decode())
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as write_sock:
+            write_sock.sendto(file_datagram, (sender_address, PORT))
 
     def on_broadcast_resources_received(self, datagram, owner):
         _, _, files = self.unpack_resources_datagram(datagram)
@@ -55,7 +62,9 @@ class Node:
         broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         while self.isStarted:
             resources_datagram = self.get_resources_datagram()
-            broadcast_socket.sendto(resources_datagram, ("255.255.255.255", PORT))
+            print(resources_datagram)
+            # resources_datagram = self.get_request_file_datagram("kut.txt")
+            broadcast_socket.sendto(resources_datagram, (BROADCAST_ADDRESS, PORT))
             time.sleep(5)
 
     def request_file(self, filename: str):

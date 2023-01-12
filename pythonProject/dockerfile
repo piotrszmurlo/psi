@@ -1,5 +1,6 @@
 FROM python:3
+ARG RESOURCES
 ADD node.py /
 ADD main.py /
-ADD resources /resources
+ADD $RESOURCES /resources
 ENTRYPOINT ["python", "-u", "./main.py"]
