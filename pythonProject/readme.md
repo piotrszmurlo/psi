@@ -6,7 +6,9 @@ terminal 1:
 terminal 2:
 `docker-compose run --rm node 2`
 
+...
+
 terminal n:
 `docker-compose run --rm node n`
 
-n - number of nodes
+n - node number

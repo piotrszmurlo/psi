@@ -28,7 +28,8 @@ class Node:
         self.current_filename = ''
 
     def start(self):
-        broadcast_thread = threading.Thread(target=self.broadcast_resources, daemon=True)
+        """Starts the node"""
+        broadcast_thread = threading.Thread(target=self.broadcast_resources, daemon=True, name='Thread-broadcast')
         self.isStarted = True
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server_socket.bind(('', PORT))
@@ -42,8 +43,7 @@ class Node:
                 worker_thread = threading.Thread(target=self.on_file_data_received, args=args)
                 worker_thread.start()
             elif datagram_type == DatagramType.BROADCAST_RESOURCES:
-                worker_thread = threading.Thread(target=self.on_broadcast_resources_received,
-                                                 args=args)
+                worker_thread = threading.Thread(target=self.on_broadcast_resources_received, args=args)
                 worker_thread.start()
             elif datagram_type == DatagramType.REQUEST_FILE:
                 worker_thread = threading.Thread(target=self.on_request_file_received, args=args)
@@ -60,7 +60,7 @@ class Node:
 
     def on_request_file_received(self, datagram: bytes, sender_address: str):
         _, _, filename = self.unpack_datagram(datagram)
-        print(f"{threading.current_thread().name}: Got request from {sender_address} for file {filename}")
+        print(f"{threading.current_thread().name}: Received request from {sender_address} for file {filename}")
         file_datagram = self.get_file_datagram(filename)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as write_sock:
             write_sock.sendto(file_datagram, (sender_address, PORT))
@@ -75,14 +75,17 @@ class Node:
                 self.available_resources[filename].append(owner)
 
     def broadcast_resources(self):
+        """Starts broadcasting current resources"""
         broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         while self.isStarted:
             resources_datagram = self.get_resources_datagram()
             broadcast_socket.sendto(resources_datagram, (BROADCAST_ADDRESS, PORT))
+            print(f"{threading.current_thread().name}: Resources broadcast")
             time.sleep(5)
 
     def request_file(self, filename: str):
+        """Sends a file request to a random peer"""
         data = self.get_request_file_datagram(filename)
         source_address = random.choice(self.available_resources[filename])
         self.current_filename = filename
@@ -90,6 +93,7 @@ class Node:
             client_socket.sendto(data, (source_address, PORT))
 
     def get_request_file_datagram(self, filename: str):
+        """Returns a datagram used to request a remote file from a peer"""
         type_ = DatagramType.REQUEST_FILE
         value = filename
         length = len(value) + HEADER_SIZE
@@ -97,6 +101,7 @@ class Node:
         return datagram
 
     def get_resources_datagram(self) -> Optional[bytes]:
+        """Returns a datagram containing local files"""
         resource_list = os.listdir(RESOURCES_PATH)
         if not resource_list:
             return
@@ -110,6 +115,7 @@ class Node:
         return datagram
 
     def get_file_datagram(self, filename: str) -> Optional[bytes]:
+        """Returns a datagram containing file data"""
         type_ = DatagramType.FILE_DATA
         value = ''
         with open(f"{RESOURCES_PATH}/{filename}", 'r') as file:
@@ -119,6 +125,7 @@ class Node:
         return datagram
 
     def unpack_datagram(self, datagram: bytes):
+        """Unpacks datagram structure to type, value length and value"""
         type_, length = struct.unpack(STRUCT_FORMAT_HEADER, datagram[:HEADER_SIZE])
         value = datagram[HEADER_SIZE:].decode()
         if type_ == DatagramType.BROADCAST_RESOURCES:
