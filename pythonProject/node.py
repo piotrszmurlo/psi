@@ -1,5 +1,4 @@
 import random
-from pprint import pprint
 import os
 import socket
 import struct
@@ -38,31 +37,37 @@ class Node:
             datagram, sender = server_socket.recvfrom(BUFFER_SIZE)
             sender_address = sender[0]
             datagram_type = datagram[0]
+            args = (datagram, sender_address)
             if datagram_type == DatagramType.FILE_DATA:
-                self.on_file_data_received(datagram, sender_address)
+                worker_thread = threading.Thread(target=self.on_file_data_received, args=args)
+                worker_thread.start()
             elif datagram_type == DatagramType.BROADCAST_RESOURCES:
-                self.on_broadcast_resources_received(datagram, sender_address)
+                worker_thread = threading.Thread(target=self.on_broadcast_resources_received,
+                                                 args=args)
+                worker_thread.start()
             elif datagram_type == DatagramType.REQUEST_FILE:
-                self.on_request_file_received(datagram, sender_address)
+                worker_thread = threading.Thread(target=self.on_request_file_received, args=args)
+                worker_thread.start()
 
     def on_file_data_received(self, datagram, sender_address):
         if self.current_filename == '':
             return
         _, _, file_contents = self.unpack_datagram(datagram)
         with open(f"{RESOURCES_PATH}/{self.current_filename}", 'w') as new_file:
-            new_file.write(file_contents.decode())
-        print(f"Received file {self.current_filename} from {sender_address}")
+            new_file.write(file_contents)
+        print(f"{threading.current_thread().name}: Received file {self.current_filename} from {sender_address}")
         self.current_filename = ''
 
     def on_request_file_received(self, datagram: bytes, sender_address: str):
         _, _, filename = self.unpack_datagram(datagram)
-        print(f"Got request from {sender_address} for file {filename}")
-        file_datagram = self.get_file_datagram(filename.decode())
+        print(f"{threading.current_thread().name}: Got request from {sender_address} for file {filename}")
+        file_datagram = self.get_file_datagram(filename)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as write_sock:
             write_sock.sendto(file_datagram, (sender_address, PORT))
+        print(f'{threading.current_thread().name}: Sent "{filename}" to {sender_address}')
 
     def on_broadcast_resources_received(self, datagram, owner):
-        _, _, filenames = self.unpack_resources_datagram(datagram)
+        _, _, filenames = self.unpack_datagram(datagram)
         for filename in filenames:
             if filename not in self.available_resources:
                 self.available_resources[filename] = [owner]
@@ -104,11 +109,6 @@ class Node:
         datagram = struct.pack(STRUCT_FORMAT_HEADER, type_, length) + value.encode()
         return datagram
 
-    def unpack_resources_datagram(self, datagram: bytes) -> tuple[int, int, list[str]]:
-        type_, length, value = self.unpack_datagram(datagram)
-
-        return type_, length, value.decode().split('/')
-
     def get_file_datagram(self, filename: str) -> Optional[bytes]:
         type_ = DatagramType.FILE_DATA
         value = ''
@@ -120,10 +120,13 @@ class Node:
 
     def unpack_datagram(self, datagram: bytes):
         type_, length = struct.unpack(STRUCT_FORMAT_HEADER, datagram[:HEADER_SIZE])
-        value = datagram[HEADER_SIZE:]
+        value = datagram[HEADER_SIZE:].decode()
+        if type_ == DatagramType.BROADCAST_RESOURCES:
+            value = value.split('/')
         return type_, length, value
 
     def get_available_files(self):
+        """Returns remote files available to download"""
         local_resource_list = os.listdir(RESOURCES_PATH)
         available_files = [file for file in self.available_resources if file not in local_resource_list]
         return available_files

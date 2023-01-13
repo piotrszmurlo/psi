@@ -18,7 +18,7 @@ def main():
     print("q -> quit")
     print("ls -> list available files")
     print('get "[filename]" -> download a file')
-    command = input("Input command: ")
+    command = input()
     while command != CommandType.QUIT:
         if command == CommandType.LIST:
             available_files = node.get_available_files()
