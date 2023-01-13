@@ -1,6 +1,7 @@
+import os
 import threading
 
-from node import Node
+from node import Node, RESOURCES_PATH
 
 
 class CommandType:
@@ -21,12 +22,14 @@ def main():
     while command != CommandType.QUIT:
         if command == CommandType.LIST:
             available_files = node.get_available_files()
+            print(os.listdir(RESOURCES_PATH))
             if not available_files:
                 print("No remote files available")
             else:
                 print(available_files)
         if command.startswith(CommandType.GET):
-            command.split('"')
+            filename = command.removeprefix('get "').removesuffix('"')
+            node.request_file(filename)
         command = input("Input command: ")
 
 

@@ -1,3 +1,4 @@
+import random
 from pprint import pprint
 import os
 import socket
@@ -25,6 +26,7 @@ class Node:
         os.makedirs(RESOURCES_PATH, exist_ok=True)
         self.available_resources = {}
         self.isStarted = False
+        self.current_filename = ''
 
     def start(self):
         broadcast_thread = threading.Thread(target=self.broadcast_resources, daemon=True)
@@ -37,25 +39,35 @@ class Node:
             sender_address = sender[0]
             datagram_type = datagram[0]
             if datagram_type == DatagramType.FILE_DATA:
-                pprint(self.unpack_datagram(datagram))
+                self.on_file_data_received(datagram, sender_address)
             elif datagram_type == DatagramType.BROADCAST_RESOURCES:
                 self.on_broadcast_resources_received(datagram, sender_address)
             elif datagram_type == DatagramType.REQUEST_FILE:
                 self.on_request_file_received(datagram, sender_address)
 
+    def on_file_data_received(self, datagram, sender_address):
+        if self.current_filename == '':
+            return
+        _, _, file_contents = self.unpack_datagram(datagram)
+        with open(f"{RESOURCES_PATH}/{self.current_filename}", 'w') as new_file:
+            new_file.write(file_contents.decode())
+        print(f"Received file {self.current_filename} from {sender_address}")
+        self.current_filename = ''
+
     def on_request_file_received(self, datagram: bytes, sender_address: str):
         _, _, filename = self.unpack_datagram(datagram)
+        print(f"Got request from {sender_address} for file {filename}")
         file_datagram = self.get_file_datagram(filename.decode())
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as write_sock:
             write_sock.sendto(file_datagram, (sender_address, PORT))
 
     def on_broadcast_resources_received(self, datagram, owner):
-        _, _, files = self.unpack_resources_datagram(datagram)
-        for file in files:
-            if file not in self.available_resources:
-                self.available_resources[file] = [owner]
-            elif self.available_resources[file] and owner not in self.available_resources[file]:
-                self.available_resources[file].append(owner)
+        _, _, filenames = self.unpack_resources_datagram(datagram)
+        for filename in filenames:
+            if filename not in self.available_resources:
+                self.available_resources[filename] = [owner]
+            elif self.available_resources[filename] and owner not in self.available_resources[filename]:
+                self.available_resources[filename].append(owner)
 
     def broadcast_resources(self):
         broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -67,8 +79,10 @@ class Node:
 
     def request_file(self, filename: str):
         data = self.get_request_file_datagram(filename)
+        source_address = random.choice(self.available_resources[filename])
+        self.current_filename = filename
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client_socket:
-            client_socket.sendto(data, ("127.0.0.1", PORT))
+            client_socket.sendto(data, (source_address, PORT))
 
     def get_request_file_datagram(self, filename: str):
         type_ = DatagramType.REQUEST_FILE
@@ -98,12 +112,8 @@ class Node:
     def get_file_datagram(self, filename: str) -> Optional[bytes]:
         type_ = DatagramType.FILE_DATA
         value = ''
-        try:
-            with open(f"{RESOURCES_PATH}/{filename}", "r") as file:
-                value += file.read()
-        except FileNotFoundError:
-            print(f'File "{filename}" not found!')
-            return
+        with open(f"{RESOURCES_PATH}/{filename}", 'r') as file:
+            value += file.read()
         length = len(value) + HEADER_SIZE
         datagram = struct.pack(STRUCT_FORMAT_HEADER, type_, length) + value.encode()
         return datagram
