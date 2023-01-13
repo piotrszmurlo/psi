@@ -6,12 +6,13 @@ import time
 from typing import Optional
 import threading
 
-RESOURCES_PATH = 'resources1'
+RESOURCES_PATH = 'resources'
 HEADER_SIZE = 5  # sizeof(type: unsigned char + length: unsigned int)
 BUFFER_SIZE = 1024
 STRUCT_FORMAT_HEADER = "!BI"
 PORT = 53290
 BROADCAST_ADDRESS = "255.255.255.255"
+
 
 class DatagramType:
     BROADCAST_RESOURCES = 0
@@ -26,7 +27,7 @@ class Node:
         self.isStarted = False
 
     def start(self):
-        broadcast_thread = threading.Thread(target=self.broadcast_resources)
+        broadcast_thread = threading.Thread(target=self.broadcast_resources, daemon=True)
         self.isStarted = True
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server_socket.bind(('', PORT))
@@ -55,15 +56,12 @@ class Node:
                 self.available_resources[file] = [owner]
             elif self.available_resources[file] and owner not in self.available_resources[file]:
                 self.available_resources[file].append(owner)
-        pprint(self.available_resources)
 
     def broadcast_resources(self):
         broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         while self.isStarted:
             resources_datagram = self.get_resources_datagram()
-            print(resources_datagram)
-            # resources_datagram = self.get_request_file_datagram("kut.txt")
             broadcast_socket.sendto(resources_datagram, (BROADCAST_ADDRESS, PORT))
             time.sleep(5)
 
@@ -114,3 +112,8 @@ class Node:
         type_, length = struct.unpack(STRUCT_FORMAT_HEADER, datagram[:HEADER_SIZE])
         value = datagram[HEADER_SIZE:]
         return type_, length, value
+
+    def get_available_files(self):
+        local_resource_list = os.listdir(RESOURCES_PATH)
+        available_files = [file for file in self.available_resources if file not in local_resource_list]
+        return available_files
