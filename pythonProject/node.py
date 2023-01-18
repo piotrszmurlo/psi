@@ -6,14 +6,15 @@ import time
 import threading
 
 RESOURCES_PATH = 'resources'
-HEADER_SIZE = 5  # sizeof(type: unsigned char + length: unsigned int)
-BUFFER_SIZE = 65536
-STRUCT_FORMAT_HEADER = "!BI"
+BUFFER_SIZE = 65535
 PORT = 53290
-BROADCAST_ADDRESS = "255.255.255.255"
-TIMEOUT = 3
+TIMEOUT = 3  # seconds
 MAX_NUMBER_OF_RETRIES = 3
-DATAGRAM_LOSS_CHANCE = 0  # [0, 1]
+DATAGRAM_LOSS_CHANCE = 0.5  # [0, 1]
+
+BROADCAST_ADDRESS = "255.255.255.255"
+HEADER_SIZE = 5  # sizeof(type: unsigned char + length: unsigned int)
+STRUCT_FORMAT_HEADER = "!BI"
 
 
 class DatagramType:
@@ -127,6 +128,7 @@ class Node:
         if filename not in os.listdir(RESOURCES_PATH):
             if number_of_retries == MAX_NUMBER_OF_RETRIES:
                 print(f"{threading.current_thread().name}: Timeout - max retries, aborting file request")
+                self.current_filename = ''
                 return
             print(f"{threading.current_thread().name}: Timeout - waited for {TIMEOUT} seconds and got no"
                   f" response from {source_address}, retrying file request")

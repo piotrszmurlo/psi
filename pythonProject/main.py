@@ -11,15 +11,19 @@ class CommandType:
     ADD_FILE = 'add'
 
 
+def print_help():
+    print("q -> quit")
+    print("ls -> list available files")
+    print('add "[absolute path to the file]" -> add new file to resources')
+    print('get "[filename]" -> download a file')
+
+
 def main():
     node = Node()
     background_thread = threading.Thread(target=node.start, daemon=True)
     background_thread.start()
 
-    print("q -> quit")
-    print("ls -> list available files")
-    print('add "[absolute path to the file]" -> add new file to resources')
-    print('get "[filename]" -> download a file')
+    print_help()
     command = input()
     initial = True
     while command != CommandType.QUIT:
@@ -66,9 +70,7 @@ def main():
                 node.request_file(filename, sources[int(source_index)])
         else:
             print("Unknown command")
-            print("q -> quit")
-            print("ls -> list available files")
-            print('get "[filename]" -> download a file')
+            print_help()
 
 
 if __name__ == '__main__':
