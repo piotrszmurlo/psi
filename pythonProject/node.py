@@ -13,7 +13,7 @@ PORT = 53290
 BROADCAST_ADDRESS = "255.255.255.255"
 TIMEOUT = 3
 MAX_NUMBER_OF_RETRIES = 3
-DATAGRAM_LOSS_CHANCE = 0.5  # [0, 1]
+DATAGRAM_LOSS_CHANCE = 0  # [0, 1]
 
 
 class DatagramType:
@@ -58,7 +58,12 @@ class Node:
     def on_file_data_received(self, datagram, sender_address):
         if self.current_filename == '':
             return
-        _, _, file_contents = self.unpack_datagram(datagram)
+        _, expected_length, file_contents = self.unpack_datagram(datagram)
+        if expected_length != len(file_contents) + HEADER_SIZE:
+            print(f"{threading.current_thread().name}: Received file data {self.current_filename} from {sender_address}"
+                  f" is corrupted. Please retry.")
+            self.current_filename = ''
+            return
         with open(f"{RESOURCES_PATH}/{self.current_filename}", 'wb') as new_file:
             new_file.write(file_contents)
         print(f"{threading.current_thread().name}: Received file {self.current_filename} from {sender_address}")
@@ -67,12 +72,16 @@ class Node:
     def on_request_file_received(self, datagram: bytes, sender_address: str):
         _, _, filename = self.unpack_datagram(datagram)
         print(f"{threading.current_thread().name}: Received request from {sender_address} for file {filename}")
-        if random.random() < 0.5:  # datagram loss simulation
+        if random.random() < DATAGRAM_LOSS_CHANCE:  # datagram loss simulation
             print(f"{threading.current_thread().name}: Outgoing file data datagram is lost!")
             return
         file_datagram = self.get_file_datagram(filename)
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as write_sock:
-            write_sock.sendto(file_datagram, (sender_address, PORT))
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as write_sock:
+                write_sock.sendto(file_datagram, (sender_address, PORT))
+        except socket.error as e:
+            print(f"Send file socket error: {e}")
+            return
         print(f'{threading.current_thread().name}: Sent "{filename}" to {sender_address}')
 
     def on_broadcast_resources_received(self, datagram, owner):
@@ -116,7 +125,7 @@ class Node:
             exit(1)
         time.sleep(TIMEOUT)
         if filename not in os.listdir(RESOURCES_PATH):
-            if number_of_retries > MAX_NUMBER_OF_RETRIES:
+            if number_of_retries == MAX_NUMBER_OF_RETRIES:
                 print(f"{threading.current_thread().name}: Timeout - max retries, aborting file request")
                 return
             print(f"{threading.current_thread().name}: Timeout - waited for {TIMEOUT} seconds and got no"

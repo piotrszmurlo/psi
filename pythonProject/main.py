@@ -65,7 +65,7 @@ def main():
                     continue
                 node.request_file(filename, sources[int(source_index)])
         else:
-            print("Unkown command")
+            print("Unknown command")
             print("q -> quit")
             print("ls -> list available files")
             print('get "[filename]" -> download a file')
