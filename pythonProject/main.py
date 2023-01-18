@@ -1,6 +1,6 @@
 import os
 import threading
-
+import shutil
 from node import Node, RESOURCES_PATH
 
 
@@ -8,6 +8,7 @@ class CommandType:
     QUIT = 'q'
     GET = 'get'
     LIST = 'ls'
+    ADD_FILE = 'add'
 
 
 def main():
@@ -17,6 +18,7 @@ def main():
 
     print("q -> quit")
     print("ls -> list available files")
+    print('add "[absolute path to the file]" -> add new file to resources')
     print('get "[filename]" -> download a file')
     command = input()
     initial = True
@@ -30,8 +32,17 @@ def main():
                 print("No remote files available")
             else:
                 print(available_files)
+        elif command.startswith(CommandType.ADD_FILE):
+            path = command.removeprefix(f'{CommandType.ADD_FILE} "').removesuffix('"')
+            try:
+                shutil.copy2(path, 'resources/')
+                print("File copied successfully")
+            except shutil.Error:
+                print("Error: Incorrect path")
+            except FileNotFoundError:
+                print("Error: File not found")
         elif command.startswith(CommandType.GET):
-            filename = command.removeprefix('get "').removesuffix('"')
+            filename = command.removeprefix(f'{CommandType.GET} "').removesuffix('"')
             if filename in os.listdir(RESOURCES_PATH):
                 print("File is available locally.")
                 continue

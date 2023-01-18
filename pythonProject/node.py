@@ -12,6 +12,8 @@ STRUCT_FORMAT_HEADER = "!BI"
 PORT = 53290
 BROADCAST_ADDRESS = "255.255.255.255"
 TIMEOUT = 3
+MAX_NUMBER_OF_RETRIES = 3
+DATAGRAM_LOSS_CHANCE = 0.5  # [0, 1]
 
 
 class DatagramType:
@@ -31,8 +33,12 @@ class Node:
         """Starts the node"""
         broadcast_thread = threading.Thread(target=self.broadcast_resources, daemon=True, name='Thread-broadcast')
         self.isStarted = True
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_socket.bind(('', PORT))
+        try:
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            server_socket.bind(('', PORT))
+        except socket.error:
+            print(f"{threading.current_thread().name}: Main socket creating error")
+            exit(1)
         broadcast_thread.start()
         while self.isStarted:
             datagram, sender = server_socket.recvfrom(BUFFER_SIZE)
@@ -79,28 +85,43 @@ class Node:
 
     def broadcast_resources(self):
         """Starts broadcasting current resources"""
-        broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        try:
+            broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        except socket.error:
+            print(f"{threading.current_thread().name}: Broadcast socket creating error")
+            exit(1)
         while self.isStarted:
             resources_datagram = self.get_resources_datagram()
-            broadcast_socket.sendto(resources_datagram, (BROADCAST_ADDRESS, PORT))
-            time.sleep(5)
+            try:
+                broadcast_socket.sendto(resources_datagram, (BROADCAST_ADDRESS, PORT))
+                time.sleep(5)
+            except socket.error:
+                print(f"{threading.current_thread().name}: Broadcast sendto() error")
+                exit(1)
 
     def request_file(self, filename: str, source_address):
         """Sends a file request to source_address"""
         worker_thread = threading.Thread(target=self._request_file, args=(filename, source_address))
         worker_thread.start()
 
-    def _request_file(self, filename: str, source_address):
+    def _request_file(self, filename: str, source_address, number_of_retries=0):
         data = self.get_request_file_datagram(filename)
         self.current_filename = filename
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client_socket:
-            client_socket.sendto(data, (source_address, PORT))
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client_socket:
+                client_socket.sendto(data, (source_address, PORT))
+        except socket.error:
+            print(f"{threading.current_thread().name}: Request file socket creating error")
+            exit(1)
         time.sleep(TIMEOUT)
         if filename not in os.listdir(RESOURCES_PATH):
+            if number_of_retries > MAX_NUMBER_OF_RETRIES:
+                print(f"{threading.current_thread().name}: Timeout - max retries, aborting file request")
+                return
             print(f"{threading.current_thread().name}: Timeout - waited for {TIMEOUT} seconds and got no"
                   f" response from {source_address}, retrying file request")
-            self._request_file(filename, source_address)
+            self._request_file(filename, source_address, number_of_retries+1)
 
     def get_request_file_datagram(self, filename: str):
         """Returns a datagram used to request a remote file from a peer"""
