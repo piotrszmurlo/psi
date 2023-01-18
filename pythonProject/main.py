@@ -23,14 +23,14 @@ def main():
     while command != CommandType.QUIT:
         if not initial:
             command = input()
-        initial = False 
+        initial = False
         if command == CommandType.LIST:
             available_files = node.get_available_files()
             if not available_files:
                 print("No remote files available")
             else:
                 print(available_files)
-        if command.startswith(CommandType.GET):
+        elif command.startswith(CommandType.GET):
             filename = command.removeprefix('get "').removesuffix('"')
             if filename in os.listdir(RESOURCES_PATH):
                 print("File is available locally.")
@@ -53,6 +53,11 @@ def main():
                     print("Incorrect source index, aborting")
                     continue
                 node.request_file(filename, sources[int(source_index)])
+        else:
+            print("Unkown command")
+            print("q -> quit")
+            print("ls -> list available files")
+            print('get "[filename]" -> download a file')
 
 
 if __name__ == '__main__':
