@@ -9,4 +9,4 @@ terminal 2:
 `docker-compose run --rm node2`
 
 terminal 3:
-`docker-compose run --rm node2`
+`docker-compose run --rm node3`
