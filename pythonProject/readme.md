@@ -1,6 +1,7 @@
 Start:
 
 terminal 1:
+
 `docker-compose build`
 
 `docker-compose run --rm node1`
