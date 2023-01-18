@@ -3,12 +3,11 @@ import os
 import socket
 import struct
 import time
-from typing import Optional
 import threading
 
 RESOURCES_PATH = 'resources'
 HEADER_SIZE = 5  # sizeof(type: unsigned char + length: unsigned int)
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 65536
 STRUCT_FORMAT_HEADER = "!BI"
 PORT = 53290
 BROADCAST_ADDRESS = "255.255.255.255"
@@ -53,12 +52,14 @@ class Node:
         if self.current_filename == '':
             return
         _, _, file_contents = self.unpack_datagram(datagram)
-        with open(f"{RESOURCES_PATH}/{self.current_filename}", 'w') as new_file:
+        with open(f"{RESOURCES_PATH}/{self.current_filename}", 'wb') as new_file:
             new_file.write(file_contents)
         print(f"{threading.current_thread().name}: Received file {self.current_filename} from {sender_address}")
         self.current_filename = ''
 
     def on_request_file_received(self, datagram: bytes, sender_address: str):
+        # if random.random() < 0.2:  # datagram loss simulation
+        #     return
         _, _, filename = self.unpack_datagram(datagram)
         print(f"{threading.current_thread().name}: Received request from {sender_address} for file {filename}")
         file_datagram = self.get_file_datagram(filename)
@@ -81,13 +82,16 @@ class Node:
         while self.isStarted:
             resources_datagram = self.get_resources_datagram()
             broadcast_socket.sendto(resources_datagram, (BROADCAST_ADDRESS, PORT))
-            print(f"{threading.current_thread().name}: Resources broadcast")
             time.sleep(5)
 
-    def request_file(self, filename: str):
+    def save_file(self, filename: str, file_data: bytes):
+        with open(f"{RESOURCES_PATH}/{filename}", 'wb') as new_file:
+            new_file.write(file_data)
+
+    def request_file(self, filename: str, source_address):
         """Sends a file request to a random peer"""
         data = self.get_request_file_datagram(filename)
-        source_address = random.choice(self.available_resources[filename])
+        # source_address = random.choice(self.available_resources[filename])
         self.current_filename = filename
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client_socket:
             client_socket.sendto(data, (source_address, PORT))
@@ -100,7 +104,7 @@ class Node:
         datagram = struct.pack(STRUCT_FORMAT_HEADER, type_, length) + value.encode()
         return datagram
 
-    def get_resources_datagram(self) -> Optional[bytes]:
+    def get_resources_datagram(self):
         """Returns a datagram containing local files"""
         resource_list = os.listdir(RESOURCES_PATH)
         if not resource_list:
@@ -114,22 +118,24 @@ class Node:
         datagram = struct.pack(STRUCT_FORMAT_HEADER, type_, length) + value.encode()
         return datagram
 
-    def get_file_datagram(self, filename: str) -> Optional[bytes]:
+    def get_file_datagram(self, filename: str):
         """Returns a datagram containing file data"""
         type_ = DatagramType.FILE_DATA
-        value = ''
-        with open(f"{RESOURCES_PATH}/{filename}", 'r') as file:
-            value += file.read()
+        # value = ''
+        with open(f"{RESOURCES_PATH}/{filename}", 'rb') as file:
+            value = file.read()
         length = len(value) + HEADER_SIZE
-        datagram = struct.pack(STRUCT_FORMAT_HEADER, type_, length) + value.encode()
+        datagram = struct.pack(STRUCT_FORMAT_HEADER, type_, length) + value
         return datagram
 
     def unpack_datagram(self, datagram: bytes):
         """Unpacks datagram structure to type, value length and value"""
         type_, length = struct.unpack(STRUCT_FORMAT_HEADER, datagram[:HEADER_SIZE])
-        value = datagram[HEADER_SIZE:].decode()
+        value = datagram[HEADER_SIZE:]
         if type_ == DatagramType.BROADCAST_RESOURCES:
-            value = value.split('/')
+            value = value.decode().split('/')
+        elif type_ == DatagramType.REQUEST_FILE:
+            value = value.decode()
         return type_, length, value
 
     def get_available_files(self):
