@@ -11,6 +11,7 @@ BUFFER_SIZE = 65536
 STRUCT_FORMAT_HEADER = "!BI"
 PORT = 53290
 BROADCAST_ADDRESS = "255.255.255.255"
+TIMEOUT = 3
 
 
 class DatagramType:
@@ -58,10 +59,11 @@ class Node:
         self.current_filename = ''
 
     def on_request_file_received(self, datagram: bytes, sender_address: str):
-        # if random.random() < 0.2:  # datagram loss simulation
-        #     return
         _, _, filename = self.unpack_datagram(datagram)
         print(f"{threading.current_thread().name}: Received request from {sender_address} for file {filename}")
+        if random.random() < 0.5:  # datagram loss simulation
+            print(f"{threading.current_thread().name}: Outgoing file data datagram is lost!")
+            return
         file_datagram = self.get_file_datagram(filename)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as write_sock:
             write_sock.sendto(file_datagram, (sender_address, PORT))
@@ -84,17 +86,21 @@ class Node:
             broadcast_socket.sendto(resources_datagram, (BROADCAST_ADDRESS, PORT))
             time.sleep(5)
 
-    def save_file(self, filename: str, file_data: bytes):
-        with open(f"{RESOURCES_PATH}/{filename}", 'wb') as new_file:
-            new_file.write(file_data)
-
     def request_file(self, filename: str, source_address):
-        """Sends a file request to a random peer"""
+        """Sends a file request to source_address"""
+        worker_thread = threading.Thread(target=self._request_file, args=(filename, source_address))
+        worker_thread.start()
+
+    def _request_file(self, filename: str, source_address):
         data = self.get_request_file_datagram(filename)
-        # source_address = random.choice(self.available_resources[filename])
         self.current_filename = filename
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client_socket:
             client_socket.sendto(data, (source_address, PORT))
+        time.sleep(TIMEOUT)
+        if filename not in os.listdir(RESOURCES_PATH):
+            print(f"{threading.current_thread().name}: Timeout - waited for {TIMEOUT} seconds and got no"
+                  f" response from {source_address}, retrying file request")
+            self._request_file(filename, source_address)
 
     def get_request_file_datagram(self, filename: str):
         """Returns a datagram used to request a remote file from a peer"""
@@ -121,7 +127,6 @@ class Node:
     def get_file_datagram(self, filename: str):
         """Returns a datagram containing file data"""
         type_ = DatagramType.FILE_DATA
-        # value = ''
         with open(f"{RESOURCES_PATH}/{filename}", 'rb') as file:
             value = file.read()
         length = len(value) + HEADER_SIZE
